@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pneumonia Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background: url('/static/background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: white;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            width: 50%;
+            margin: auto;
+        }
+        form {
+            margin: 20px auto;
+            padding: 20px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pneumonia Detection from X-ray</h1>
+        <form action="/predict" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*" required>
+            <br><br>
+            <button type="submit">Upload & Predict</button>
+        </form>
+
+        {% if error %}
+            <h2 style="color: red;">Error: {{ error }}</h2>
+        {% endif %}
+
+        {% if prediction %}
+        <h2>Prediction: {{ prediction }}</h2>
+        {% if audio_file %}
+            <audio id="audioPlayer" autoplay>
+                <source src="{{ audio_file }}" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+            <script>
+                window.onload = function() {
+                    var audio = document.getElementById("audioPlayer");
+                    audio.play().catch(error => console.log("Auto-play blocked:", error));
+                };
+            </script>
+        {% endif %}
+    {% endif %}
