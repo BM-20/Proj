@@ -34,7 +34,7 @@
     <div class="container">
         <h1>Pneumonia Detection from X-ray</h1>
         <form action="/predict" method="post" enctype="multipart/form-data">
-            <input type="file" name="file" accept="image/*" required>
+            <input type="file" name="file" accept="image/*" multiple required>
             <br><br>
             <button type="submit">Upload & Predict</button>
         </form>
@@ -43,18 +43,14 @@
             <h2 style="color: red;">Error: {{ error }}</h2>
         {% endif %}
 
-        {% if prediction %}
-        <h2>Prediction: {{ prediction }}</h2>
-        {% if audio_file %}
-            <audio id="audioPlayer" autoplay>
-                <source src="{{ audio_file }}" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <script>
-                window.onload = function() {
-                    var audio = document.getElementById("audioPlayer");
-                    audio.play().catch(error => console.log("Auto-play blocked:", error));
-                };
-            </script>
+        {% if predictions %}
+            <h2>Predictions:</h2>
+            <ul>
+                {% for filename, result in predictions %}
+                    <li><strong>{{ filename }}</strong>: {{ result }}</li>
+                {% endfor %}
+            </ul>
         {% endif %}
-    {% endif %}
+    </div>
+</body>
+</html>
