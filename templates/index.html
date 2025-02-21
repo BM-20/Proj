@@ -1,6 +1,3 @@
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,10 +17,10 @@
             background: rgba(0, 0, 0, 0.7);
             padding: 20px;
             border-radius: 10px;
-            width: 50%;
+            width: 60%;
             margin: auto;
         }
-        form {
+        form, .buttons, .navigation {
             margin: 20px auto;
             padding: 20px;
         }
@@ -31,21 +28,55 @@
             padding: 10px;
             margin: 10px;
         }
+        .navbar {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .navbar button {
+            padding: 10px 15px;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
     </style>
     <script>
-        function storeAndShowTests() {
-            fetch('/store_tests', { method: 'POST' })
+        function storeResults() {
+            const folderName = prompt("Enter a name for the batch folder:");
+            if (!folderName) return;
+
+            fetch(`/store_tests?folder=${folderName}`, { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        document.getElementById('test_results').style.display = 'block';
-                        document.getElementById('test_results_frame').src = '/view_tests';
+                        alert("Results stored successfully!");
+                    }
+                });
+        }
+
+        function quitApplication() {
+            fetch('/quit', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Application is closing...");
+                        setTimeout(() => {
+                            window.close();
+                        }, 1000);
                     }
                 });
         }
     </script>
 </head>
 <body>
+    <div class="navbar">
+        <button onclick="window.location.href='/view_batches'">View Stored Batches</button>
+        <button onclick="quitApplication()">Quit Application</button>
+    </div>
+    
     <div class="container">
         <h1>Pneumonia Detection from X-ray</h1>
         <form action="/predict" method="post" enctype="multipart/form-data">
@@ -65,13 +96,10 @@
                     <li><strong>{{ filename }}</strong>: {{ result }}</li>
                 {% endfor %}
             </ul>
-            <button onclick="storeAndShowTests()">Store Results & View</button>
-            <div id="test_results" style="display:none;">
-                <h2>Stored Test Results:</h2>
-                <iframe id="test_results_frame" src="" width="100%" height="400px"></iframe>
+            <div class="buttons">
+                <button onclick="storeResults()">Store Results</button>
             </div>
         {% endif %}
     </div>
 </body>
 </html>
-
