@@ -204,8 +204,7 @@
     
 #     return render_template('index.html', prediction=prediction_text)
 
-# if __name__ == "__main__":
-#     app.run(host="0.0.0.0", port=5000)
+
 # from flask import Flask, request, jsonify, render_template, send_from_directory, url_for
 # import torch
 # import torchvision.transforms as transforms
@@ -215,6 +214,7 @@
 # import torch.nn as nn
 # import time
 # from torchvision.models import resnet18
+# import torch.nn.functional as F
 
 # # Initialize Flask app
 # app = Flask(__name__, static_url_path='/static')
@@ -222,7 +222,12 @@
 # # Allowed file extensions
 # ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
 
-# # Load trained model
+# # Load Pretrained ResNet18 for X-ray detection
+# xray_detector = resnet18(pretrained=True)
+# xray_detector = torch.nn.Sequential(*(list(xray_detector.children())[:-1]))  # Remove the classification layer
+# xray_detector.eval()  # Put model in evaluation mode
+
+# # Load trained model for pneumonia detection
 # model = resnet18(weights=None)  # Load architecture
 # model.fc = nn.Sequential(
 #     nn.Linear(model.fc.in_features, 128),
@@ -252,7 +257,18 @@
 # def allowed_file(filename):
 #     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# # Prediction function
+# # X-ray detection function using pre-trained CNN
+# def is_xray(image: Image.Image):
+#     """Use pre-trained CNN to check if the image looks like an X-ray."""
+#     image = transform(image).unsqueeze(0)  # Convert to tensor
+#     with torch.no_grad():
+#         features = xray_detector(image)  # Extract ResNet features
+#         avg_feature_response = features.mean().item()  # Get the mean activation
+
+#     return avg_feature_response > 0.72  # Adjust threshold based on performance
+    
+
+# # Pneumonia prediction function
 # def predict(image: Image.Image):
 #     image = transform(image).unsqueeze(0)  # Add batch dimension
 #     with torch.no_grad():
@@ -296,11 +312,17 @@
 #             predictions.append((file.filename, "Invalid image file"))
 #             continue
 
+#         # **Step 1: Check if it's an X-ray**
+#         if not is_xray(image):
+#             predictions.append((file.filename, "Rejected: This is not an X-ray"))
+#             continue
+
+#         # **Step 2: Proceed with Pneumonia Classification**
 #         result, status, confidence = predict(image)
 #         prediction_text = f"{result} ({confidence:.2f}% confidence)"
 #         predictions.append((file.filename, prediction_text))
 
-#     return render_template('index.html', predictions=predictions, error=None)
+#     return render_template('index.html', predictions=predictions)
 
 # if __name__ == "__main__":
 #     app.run(host="0.0.0.0", port=5000)
@@ -312,19 +334,29 @@ import io
 import os
 import torch.nn as nn
 import time
+import pydicom
 from torchvision.models import resnet18
 import torch.nn.functional as F
 
 # Initialize Flask app
 app = Flask(__name__, static_url_path='/static')
 
-# Allowed file extensions
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
+# Ensure static storage for uploaded images
+UPLOAD_FOLDER = "static/uploads"
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
-# Load Pretrained ResNet18 for X-ray detection
+STORED_TESTS_FOLDER = "static/stored_tests"
+if not os.path.exists(STORED_TESTS_FOLDER):
+    os.makedirs(STORED_TESTS_FOLDER)
+
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "dcm"}
+
+# Load Pretrained ResNet18 for Feature Extraction
 xray_detector = resnet18(pretrained=True)
-xray_detector = torch.nn.Sequential(*(list(xray_detector.children())[:-1]))  # Remove the classification layer
-xray_detector.eval()  # Put model in evaluation mode
+xray_detector = torch.nn.Sequential(*(list(xray_detector.children())[:-1]))  # Remove classification layer
+xray_detector.eval()
 
 # Load trained model for pneumonia detection
 model = resnet18(weights=None)  # Load architecture
@@ -356,16 +388,21 @@ transform = transforms.Compose([
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# X-ray detection function using pre-trained CNN
+# Function to load DICOM images
+def load_dicom(file):
+    dicom = pydicom.dcmread(file)
+    image = dicom.pixel_array  # Extract pixel data
+    return Image.fromarray(image)
+
+# X-ray detection function
 def is_xray(image: Image.Image):
     """Use pre-trained CNN to check if the image looks like an X-ray."""
     image = transform(image).unsqueeze(0)  # Convert to tensor
     with torch.no_grad():
         features = xray_detector(image)  # Extract ResNet features
-        avg_feature_response = features.mean().item()  # Get the mean activation
+        avg_feature_response = features.mean().item()  # Compute mean activation
 
-    return avg_feature_response > 0.72  # Adjust threshold based on performance
-    
+    return avg_feature_response > 0.72  # Adjust threshold based on testing
 
 # Pneumonia prediction function
 def predict(image: Image.Image):
@@ -400,16 +437,25 @@ def predict_pneumonia():
         return render_template('index.html', error="No selected files.")
 
     predictions = []
+    stored_files = []
     for file in files:
         if not allowed_file(file.filename):
             predictions.append((file.filename, "Invalid file type"))
             continue
 
         try:
-            image = Image.open(io.BytesIO(file.read())).convert("RGB")
+            if file.filename.lower().endswith(".dcm"):
+                image = load_dicom(file)
+            else:
+                image = Image.open(io.BytesIO(file.read())).convert("RGB")
         except UnidentifiedImageError:
             predictions.append((file.filename, "Invalid image file"))
             continue
+
+        # Save image for later viewing
+        save_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        image.save(save_path)
+        stored_files.append(file.filename)
 
         # **Step 1: Check if it's an X-ray**
         if not is_xray(image):
@@ -421,7 +467,20 @@ def predict_pneumonia():
         prediction_text = f"{result} ({confidence:.2f}% confidence)"
         predictions.append((file.filename, prediction_text))
 
-    return render_template('index.html', predictions=predictions)
+    return render_template('index.html', predictions=predictions, stored_files=stored_files)
+
+@app.route('/store_tests', methods=['POST'])
+def store_tests():
+    for image in os.listdir(UPLOAD_FOLDER):
+        source = os.path.join(UPLOAD_FOLDER, image)
+        destination = os.path.join(STORED_TESTS_FOLDER, image)
+        os.rename(source, destination)
+    return jsonify({"success": True})
+
+@app.route('/view_tests')
+def view_tests():
+    images = os.listdir(STORED_TESTS_FOLDER)
+    return render_template('view_tests.html', images=images)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

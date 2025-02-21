@@ -1,3 +1,6 @@
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,6 +32,18 @@
             margin: 10px;
         }
     </style>
+    <script>
+        function storeAndShowTests() {
+            fetch('/store_tests', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('test_results').style.display = 'block';
+                        document.getElementById('test_results_frame').src = '/view_tests';
+                    }
+                });
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -50,7 +65,13 @@
                     <li><strong>{{ filename }}</strong>: {{ result }}</li>
                 {% endfor %}
             </ul>
+            <button onclick="storeAndShowTests()">Store Results & View</button>
+            <div id="test_results" style="display:none;">
+                <h2>Stored Test Results:</h2>
+                <iframe id="test_results_frame" src="" width="100%" height="400px"></iframe>
+            </div>
         {% endif %}
     </div>
 </body>
 </html>
+
