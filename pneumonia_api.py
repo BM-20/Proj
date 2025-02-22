@@ -498,6 +498,7 @@ import pydicom
 from torchvision.models import resnet18
 import torch.nn.functional as F
 import signal
+import sys
 
 # Initialize Flask app
 app = Flask(__name__, static_url_path='/static')
@@ -650,9 +651,12 @@ def view_tests(batch_name):
 
 @app.route('/quit', methods=['POST'])
 def quit_app():
-    """Terminate Flask application."""
-    os.kill(os.getpid(), signal.SIGTERM)  # Kill the Flask process
-    return jsonify({"success": True})
+    """Properly terminate Flask application."""
+    if sys.platform == "win32":
+        os._exit(0)  # Force exit on Windows
+    else:
+        os.kill(os.getpid(), signal.SIGTERM)  # Unix-based systems
+    return jsonify({"success": True})  # Won't reach this
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
