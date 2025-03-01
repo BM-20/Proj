@@ -23,13 +23,15 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
+            gap: 20px;
         }
         .image-box {
-            margin: 10px;
-            padding: 10px;
-            background: #fff;
-            border-radius: 5px;
-            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 250%;
+            
+            
+            border-radius: 8px;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
         }
         img {
             max-width: 200px;
@@ -38,16 +40,15 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Stored Test Results</h1>
-        <div class="image-container">
-            {% for image in images %}
-                <div class="image-box">
-                    <img src="{{ url_for('static', filename='stored_tests/' + image) }}" alt="Stored Image">
-                    <p>{{ image }}</p>
-                </div>
-            {% endfor %}
-        </div>
+    <div class="image-container">
+        {% for image in images %}
+            <div class="image-box">
+                    <img src="{{ url_for('static', filename='batches/' + batch_name + '/' + image.filename) }}" alt="Stored Image">
+                    <p><strong>Name:</strong> {{ image.filename }}</p>
+                    <p class="prediction"><strong>Prediction:</strong> {{ image.prediction }}</p>
+            </div>
+        {% endfor %}
+
         <button class="back-button" onclick="window.location.href='/view_batches'">Back to Stored Batches</button>
     </div>
 </body>
