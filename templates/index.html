@@ -57,7 +57,14 @@
                 .then(data => {
                     if (data.success) {
                         alert("Results stored successfully!");
+                    } else {
+                        alert(data.message);
                     }
+                })
+                .catch(error => {
+                    alert('An Error has occured. Please try again');
+                    console.error("Error:", error);
+                
                 });
         }
 
