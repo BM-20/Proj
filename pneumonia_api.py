@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory, url_for
 import torch
 import torchvision.transforms as transforms
 from PIL import Image, UnidentifiedImageError
 import io
 import os
 import torch.nn as nn
+import time
 import pydicom
 from torchvision.models import resnet18
 import torch.nn.functional as F
@@ -19,7 +20,6 @@ app = Flask(__name__, static_url_path='/static')
 UPLOAD_FOLDER = "static/uploads"
 BATCHES_FOLDER = "static/batches"
 RESULTS_FILE = "static/results.json"
-LATEST_TEST_FILE = "static/latest_test.json"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 if not os.path.exists(BATCHES_FOLDER):
@@ -126,7 +126,6 @@ def predict_pneumonia():
 
     predictions = []
     stored_files = []
-    latest_tested_files = []
     for file in files:
         if not allowed_file(file.filename):
             predictions.append((file.filename, "Invalid file type"))
@@ -141,7 +140,6 @@ def predict_pneumonia():
         save_path = os.path.join(UPLOAD_FOLDER, file.filename)
         image.save(save_path)
         stored_files.append(file.filename)
-        latest_tested_files.append(file.filename) 
 
         result, _, confidence = predict(image)
         prediction_text = f"{result} ({confidence:.2f}% confidence)"
@@ -153,11 +151,6 @@ def predict_pneumonia():
     # Save predictions persistently
     with open(RESULTS_FILE, "w") as f:
         json.dump(stored_results, f, indent=4)
-    
-    with open(LATEST_TEST_FILE, "w") as f:
-        json.dump(latest_tested_files, f)
-    
-    save_results()
 
     return render_template('index.html', predictions=predictions, stored_files=stored_files)
 
@@ -167,15 +160,8 @@ def store_tests():
     folder_name = request.args.get('folder', 'default_batch')
     batch_folder = os.path.join(BATCHES_FOLDER, folder_name)
     
-    if os.path.exists(batch_folder):
-        return jsonify({"success": False, "message": f"Batch '{folder_name}' already exists. Please choose a different name."}), 400
-    os.makedirs(batch_folder)
-    
-    if os.path.exists(LATEST_TEST_FILE):
-        with open(LATEST_TEST_FILE, "r") as f:
-            latest_tested_files = json.load(f)
-    else:
-        latest_tested_files = []
+    if not os.path.exists(batch_folder):
+        os.makedirs(batch_folder)
 
     # Load global stored predictions
     if os.path.exists(RESULTS_FILE):
@@ -186,11 +172,10 @@ def store_tests():
 
     batch_results = []  # List to store image details
 
-    for image in latest_tested_files:
+    for image in os.listdir(UPLOAD_FOLDER):
         source = os.path.join(UPLOAD_FOLDER, image)
         destination = os.path.join(batch_folder, image)
-        if os.path.exists(source):
-            os.rename(source, destination)  # Move image to batch folder
+        os.rename(source, destination)  # Move image to batch folder
 
         # Copy stored predictions for this image
         prediction_text = stored_results.get(image, "Prediction Unavailable")
@@ -203,23 +188,6 @@ def store_tests():
 
     return jsonify({"success": True, "message": f"Batch '{folder_name}' stored successfully!"})
 
-@app.route('/rename_batch', methods=['POST'])
-def rename_batch():
-    data = request.get_json()
-    old_name = data.get('old_name')
-    new_name = data.get('new_name')
-    
-    old_path = os.path.join(BATCHES_FOLDER, old_name)
-    new_path = os.path.join(BATCHES_FOLDER, new_name)
-    
-    if not os.path.exists(old_path):
-        return jsonify({"success": False, "message": "Batch does not exist."}), 404
-    
-    if os.path.exists(new_path):
-        return jsonify({"success": False, "message": "A batch with the new name already exists. Choose another name."}), 400
-    
-    os.rename(old_path, new_path)
-    return jsonify({"success": True, "message": "Batch renamed successfully!"})
 
 @app.route('/view_batches')
 def view_batches():
@@ -234,8 +202,6 @@ def delete_batch(batch_name):
             os.remove(os.path.join(batch_folder, file))
         os.rmdir(batch_folder)
     return jsonify({"success": True})
-
-
 
 @app.route('/view_tests/<batch_name>')
 def view_tests(batch_name):
@@ -265,4 +231,3 @@ def quit_app():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-

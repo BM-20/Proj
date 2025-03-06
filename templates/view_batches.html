@@ -40,9 +40,6 @@
             border: none;
             border-radius: 5px;
         }
-        .rename-button {
-            background-color: orange;
-        }
         .back-button {
             margin-top: 20px;
             padding: 10px;
@@ -67,30 +64,6 @@
                 });
         }
 
-        function renameBatch(oldName) {
-            const newName = prompt(`Enter a new name for the batch '${oldName}':`);
-            if (!newName || newName.trim() === "") return;
-
-            fetch('/rename_batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ old_name: oldName, new_name: newName })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Batch renamed successfully!');
-                    location.reload();
-                } else {
-                    alert(data.message);
-                }
-            })
-            .catch(error => {
-                alert('An error occurred. Please try again.');
-                console.error(error);
-            });
-        }
-
         function goBack() {
             window.location.href = '/';
         }
@@ -106,7 +79,6 @@
                         <p><strong>{{ batch }}</strong></p>
                         <button onclick="window.location.href='/view_tests/{{ batch }}'">View Batch</button>
                         <button onclick="deleteBatch('{{ batch }}')">Delete Batch</button>
-                        <button class="rename-button" onclick="renameBatch('{{ batch }}')">Rename</button>
                     </div>
                 {% endfor %}
             </div>
