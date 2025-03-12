@@ -103,6 +103,17 @@
             <br><br>
             <button type="submit">Upload & Predict</button>
         </form>
+        {% if grad_cam_images %}
+            <h2>Grad-CAM Visualizations:</h2>
+            <div class="grad-cam-container">
+                {% for filename, heatmap_path in grad_cam_images %}
+                    <div>
+                        <h3>{{ filename }}</h3>
+                        <img src="{{ url_for('static', filename='heatmaps/' + heatmap_path.split('/')[-1]) }}" alt="Grad-CAM Heatmap">
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
 
         {% if error %}
             <h2 style="color: red;">Error: {{ error }}</h2>

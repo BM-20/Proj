@@ -43,11 +43,18 @@
     <div class="image-container">
         {% for image in images %}
             <div class="image-box">
-                    <img src="{{ url_for('static', filename='batches/' + batch_name + '/' + image.filename) }}" alt="Stored Image">
-                    <p><strong>Name:</strong> {{ image.filename }}</p>
-                    <p class="prediction"><strong>Prediction:</strong> {{ image.prediction }}</p>
+                <p><strong>Name:</strong> {{ image.filename }}</p>
+                <img src="{{ url_for('static', filename='batches/' + batch_name + '/' + image.filename) }}" alt="Original X-ray">
+        
+                {% if image.grad_cam %}
+                    <p><strong>Grad-CAM:</strong></p>
+                    <img src="{{ url_for('static', filename='batches/' + batch_name + '/' + image.grad_cam) }}" alt="Grad-CAM">
+                {% endif %}
+        
+                <p class="prediction"><strong>Prediction:</strong> {{ image.prediction }}</p>
             </div>
         {% endfor %}
+
 
         <button class="back-button" onclick="window.location.href='/view_batches'">Back to Stored Batches</button>
     </div>
