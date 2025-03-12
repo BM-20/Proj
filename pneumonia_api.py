@@ -214,20 +214,25 @@ def predict_pneumonia():
             predictions.append((file.filename, "Invalid image file"))
             continue
 
-    save_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    image.save(save_path)
-    stored_files.append(file.filename)
+        save_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        image.save(save_path)
+        stored_files.append(file.filename)
 
-    result, _, confidence, heatmap_path = predict(image, file.filename)  # Pass filename here
-    prediction_text = f"{result} ({confidence:.2f}% confidence)"
-    predictions.append((file.filename, prediction_text))
+        result, _, confidence, heatmap_path = predict(image, file.filename)  # Pass filename here
+        prediction_text = f"{result} ({confidence:.2f}% confidence)"
+        predictions.append((file.filename, prediction_text))
 
-    if heatmap_path:
-        grad_cam_images.append((file.filename, heatmap_path))
+        if heatmap_path:
+            grad_cam_images.append((file.filename, heatmap_path))
 
 
 
-    return render_template('index.html', predictions=predictions, grad_cam_images=grad_cam_images, stored_files=stored_files)
+    return render_template(
+        'index.html',
+        predictions=predictions, 
+        grad_cam_images=grad_cam_images, 
+        stored_files=stored_files
+    )
 
 
 
