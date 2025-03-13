@@ -51,7 +51,10 @@
                     <img src="{{ url_for('static', filename='batches/' + batch_name + '/' + image.grad_cam) }}" alt="Grad-CAM">
                 {% endif %}
         
-                <p class="prediction"><strong>Prediction:</strong> {{ image.prediction }}</p>
+                <p class="prediction"><strong>Prediction:</strong> 
+                    {{ image.prediction if image.prediction else "No prediction available" }}
+                </p>
+                
             </div>
         {% endfor %}
 

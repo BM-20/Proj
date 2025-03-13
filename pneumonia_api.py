@@ -218,14 +218,16 @@ def predict_pneumonia():
         image.save(save_path)
         stored_files.append(file.filename)
 
-        result, _, confidence, heatmap_path = predict(image, file.filename)  # Pass filename here
+        result, _, confidence, heatmap_path = predict(image, file.filename)
         prediction_text = f"{result} ({confidence:.2f}% confidence)"
         predictions.append((file.filename, prediction_text))
 
+        # Store prediction in global results
+        stored_results[file.filename] = prediction_text
+        save_results()  # Save to JSON file
+
         if heatmap_path:
             grad_cam_images.append((file.filename, heatmap_path))
-
-
 
     return render_template(
         'index.html',
@@ -233,6 +235,7 @@ def predict_pneumonia():
         grad_cam_images=grad_cam_images, 
         stored_files=stored_files
     )
+
 
 
 
@@ -265,15 +268,17 @@ def store_tests():
 
         if os.path.exists(grad_cam_source):  # Check if Grad-CAM image exists before moving
             os.rename(grad_cam_source, grad_cam_destination)
-            
-            
+        
+        # Ensure prediction is retrieved and stored
         prediction_text = stored_results.get(image, "Prediction Unavailable")
+        if prediction_text == "Prediction Unavailable":
+            prediction_text = "No prediction found in records."
+
         batch_results.append({
             "filename": image,
             "prediction": prediction_text,
             "grad_cam": grad_cam_filename if os.path.exists(grad_cam_destination) else None
         })
-        
 
     # Save batch-specific predictions in results.json inside the batch folder
     batch_results_path = os.path.join(batch_folder, "results.json")
@@ -281,8 +286,6 @@ def store_tests():
         json.dump(batch_results, f, indent=4)
 
     return jsonify({"success": True, "message": f"Batch '{folder_name}' stored successfully!"})
-
-
 
 @app.route('/view_batches')
 def view_batches():
