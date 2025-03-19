@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import signal
 import sys
 import json
+from datetime import datetime
 
 # Initialize Flask app
 app = Flask(__name__, static_url_path='/static')
@@ -244,7 +245,9 @@ def store_tests():
     folder_name = request.args.get('folder', 'default_batch')
     batch_folder = os.path.join(BATCHES_FOLDER, folder_name)
 
-    if not os.path.exists(batch_folder):
+    if os.path.exists(batch_folder):
+        return jsonify({"success": False, "message": "A batch with this name already exists. Please enter a different name."}), 400
+    elif not os.path.exists(batch_folder):
         os.makedirs(batch_folder)
 
     # Load global stored predictions
@@ -255,6 +258,7 @@ def store_tests():
         stored_results = {}
 
     batch_results = []  # List to store image details
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     for image in os.listdir(UPLOAD_FOLDER):
         source = os.path.join(UPLOAD_FOLDER, image)
@@ -277,7 +281,8 @@ def store_tests():
         batch_results.append({
             "filename": image,
             "prediction": prediction_text,
-            "grad_cam": grad_cam_filename if os.path.exists(grad_cam_destination) else None
+            "grad_cam": grad_cam_filename if os.path.exists(grad_cam_destination) else None,
+            "timestamp": timestamp
         })
 
     # Save batch-specific predictions in results.json inside the batch folder
@@ -285,7 +290,7 @@ def store_tests():
     with open(batch_results_path, "w") as f:
         json.dump(batch_results, f, indent=4)
 
-    return jsonify({"success": True, "message": f"Batch '{folder_name}' stored successfully!"})
+    return jsonify({"success": True, "message": f"Batch '{folder_name}' stored successfully on {timestamp}!"})
 
 @app.route('/view_batches')
 def view_batches():
@@ -317,6 +322,9 @@ def view_tests(batch_name):
     return render_template('view_tests.html', images=batch_results, batch_name=batch_name)
 
 
+@app.route('/help')
+def help_page():
+    return render_template('help.html')
 
 @app.route('/quit', methods=['POST'])
 def quit_app():
